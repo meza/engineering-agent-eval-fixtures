@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getMagicLink } from '../db';
+import { getRun } from '../db';
 import { verifyToken } from '../lib/hmac';
 
 export interface AuthenticatedRequest extends Request {
@@ -26,18 +26,20 @@ export function requireMagicLink(
     return;
   }
 
-  const link = getMagicLink(rawToken);
-  if (!link) {
-    res.status(401).json({ error: 'Token not found' });
-    return;
-  }
-
-  if (link.expiresAt < Date.now()) {
+  const expiresAt = payload.expiresAt as number;
+  if (expiresAt < Date.now()) {
     res.status(401).json({ error: 'Token has expired' });
     return;
   }
 
-  req.magicLinkId = link.id;
-  req.runId = link.runId;
+  const runId = payload.runId as string;
+  const run = getRun(runId);
+  if (!run || run.state !== 'ACTIVE') {
+    res.status(401).json({ error: 'Run is no longer active' });
+    return;
+  }
+
+  req.magicLinkId = payload.linkId as string;
+  req.runId = runId;
   next();
 }

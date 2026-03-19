@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getRun, getMagicLink, createMagicLink } from '../db';
+import { getRun, createMagicLink } from '../db';
 import { CreateMagicLinkInput } from '../models/magicLink';
 import { signToken, verifyToken } from '../lib/hmac';
 
@@ -50,18 +50,20 @@ router.get('/validate', (req: Request, res: Response) => {
     return;
   }
 
-  const link = getMagicLink(raw);
-  if (!link) {
-    res.status(401).json({ error: 'Token not recognised' });
-    return;
-  }
-
-  if (link.expiresAt < Date.now()) {
+  const expiresAt = payload.expiresAt as number;
+  if (expiresAt < Date.now()) {
     res.status(401).json({ error: 'Token has expired' });
     return;
   }
 
-  res.json({ valid: true, runId: link.runId });
+  const runId = payload.runId as string;
+  const run = getRun(runId);
+  if (!run || run.state !== 'ACTIVE') {
+    res.status(401).json({ error: 'Run is no longer active' });
+    return;
+  }
+
+  res.json({ valid: true, runId });
 });
 
 export default router;
