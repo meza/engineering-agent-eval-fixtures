@@ -22,6 +22,21 @@ describe('GET /tasks', () => {
   });
 });
 
+describe('GET /tasks/:id', () => {
+  it('returns the task when it exists', async () => {
+    const created = await client().post('/tasks', { title: 'Find me', status: 'TODO' });
+    const res = await client().get(`/tasks/${created.body.id}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ title: 'Find me', status: 'TODO' });
+  });
+
+  it('returns 404 when the task does not exist', async () => {
+    const res = await client().get('/tasks/does-not-exist');
+    expect(res.status).toBe(404);
+    expect(res.body).toHaveProperty('error');
+  });
+});
+
 describe('POST /tasks', () => {
   it('creates a task and returns it with generated id and createdAt', async () => {
     const res = await client().post('/tasks', { title: 'Ship feature', status: 'TODO' });
